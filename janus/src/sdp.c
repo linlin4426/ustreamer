@@ -72,16 +72,13 @@ char *us_sdp_create(us_rtpv_s *rtpv, us_rtpa_s *rtpa, bool mic) {
 			"c=IN IP4 0.0.0.0" RN
 			"a=rtpmap:%u OPUS/%u/%u" RN
 			"a=fmtp:%u sprop-stereo=1" RN // useinbandfec=1
-			"a=rtcp-fb:%u nack" RN
-			"a=rtcp-fb:%u nack pli" RN
-			"a=rtcp-fb:%u goog-remb" RN
 			"a=mid:a" RN
 			"a=msid:audio a" RN
 			"a=ssrc:%" PRIu32 " cname:ustreamer" RN
 			"a=%s" RN,
 			pl, pl,
 			US_RTP_OPUS_HZ, US_RTP_OPUS_CH,
-			pl, pl, pl, pl,
+			pl,
 			rtpa->rtp->ssrc,
 			(mic ? "sendrecv" : "sendonly"));
 	}
