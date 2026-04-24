@@ -719,7 +719,9 @@ static void _plugin_incoming_rtp(janus_plugin_session *session, janus_plugin_rtp
 
 static void _plugin_incoming_rtcp(janus_plugin_session *session, janus_plugin_rtcp *packet) {
 	_IF_DISABLED({ return; });
-	if (session == NULL || packet == NULL || !packet->video) {
+	if (session == NULL || packet == NULL /*|| !packet->video*/) {
+		// FIXME: Since Chromium 147 we can't distinguish video/audio packets
+		// so we just disable !package->video condition for now.
 		return; // Accept only valid video
 	}
 	if (
