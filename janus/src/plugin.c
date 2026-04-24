@@ -722,8 +722,10 @@ static void _plugin_incoming_rtcp(janus_plugin_session *session, janus_plugin_rt
 	if (session == NULL || packet == NULL || !packet->video) {
 		return; // Accept only valid video
 	}
-	if (janus_rtcp_has_pli(packet->buffer, packet->length)) {
-		// US_JLOG_INFO("main", "Got video PLI");
+	if (
+		janus_rtcp_has_pli(packet->buffer, packet->length)
+		|| janus_rtcp_has_fir(packet->buffer, packet->length)
+	) {
 		atomic_store(&_g_key_required, true);
 	}
 }

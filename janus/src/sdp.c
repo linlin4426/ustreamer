@@ -46,6 +46,7 @@ char *us_sdp_create(us_rtpv_s *rtpv, us_rtpa_s *rtpa, bool mic) {
 			"c=IN IP4 0.0.0.0" RN
 			"a=rtpmap:%u H264/90000" RN
 			"a=fmtp:%u profile-level-id=42E01F;packetization-mode=1" RN
+			"a=rtcp-fb:%u ccm fir" RN
 			"a=rtcp-fb:%u nack" RN
 			"a=rtcp-fb:%u nack pli" RN
 			"a=rtcp-fb:%u goog-remb" RN
@@ -56,7 +57,7 @@ char *us_sdp_create(us_rtpv_s *rtpv, us_rtpa_s *rtpa, bool mic) {
 			"a=extmap:2/sendonly http://www.webrtc.org/experiments/rtp-hdrext/playout-delay" RN
 			"a=extmap:3/sendonly http://www.webrtc.org/experiments/rtp-hdrext/abs-capture-time" RN
 			"a=sendonly" RN,
-			pl, pl, pl, pl, pl, pl,
+			pl, pl, pl, pl, pl, pl, pl,
 			rtpv->rtp->ssrc);
 	}
 
