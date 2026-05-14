@@ -159,9 +159,13 @@ void _rtpv_process_nalu(us_rtpv_s *rtpv, const u8 *data, uz size, u32 pts, bool 
 static sz _find_annexb(const u8 *data, uz size) {
 	// Parses buffer for 00 00 01 start codes
 	if (size >= _PRE) {
-		for (uz index = 0; index <= size - _PRE; ++index) {
-			if (data[index] == 0 && data[index + 1] == 0 && data[index + 2] == 1) {
-				return index;
+		for (uz i = 0; i <= size - _PRE; ++i) {
+			if (
+				data[i] == 0
+				&& data[i + 1] == 0
+				&& data[i + 2] == 1
+			) {
+				return i;
 			}
 		}
 	}
