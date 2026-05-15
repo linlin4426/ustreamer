@@ -26,8 +26,6 @@
 #include "rtpv.h"
 
 #include <stdlib.h>
-#include <inttypes.h>
-#include <assert.h>
 
 #include <linux/videodev2.h>
 
@@ -60,45 +58,57 @@ void us_rtpv_destroy(us_rtpv_s *rtpv) {
 #define _PRE 3 // Annex B prefix length
 
 void us_rtpv_wrap(us_rtpv_s *rtpv, const us_frame_s *frame, bool zero_playout_delay) {
-	// There is a complicated logic here but everything works as it should:
-	//   - https://github.com/pikvm/ustreamer/issues/115#issuecomment-893071775
+	US_A(frame->format == V4L2_PIX_FMT_H264);
 
-	assert(frame->format == V4L2_PIX_FMT_H264);
+	if (frame->used <= _PRE) {
+		return;
+	}
 
 	rtpv->rtp->zero_playout_delay = zero_playout_delay;
 	rtpv->rtp->grab_ntp_ts = us_get_now_ntp() - us_ld_to_ntp(us_get_now_monotonic() - frame->grab_begin_ts);
 
 	const u32 pts = us_get_now_monotonic_u64() * 9 / 100; // PTS units are in 90 kHz
-	sz last_offset = -_PRE;
 
-	while (true) { // Find and iterate by nalus
-		const uz next_start = last_offset + _PRE;
-		sz offset = _find_annexb(frame->data + next_start, frame->used - next_start);
-		if (offset < 0) {
+	// Bytestream can be like:
+	//   [00-]00-00-01 NALU [00-]00-00-01 NALU
+	// ... with optional 00 prefix for _PRE.
+	// We need to iterate by NALUs only and throw away separators.
+
+	const sz offset_to_first = _find_annexb(frame->data, frame->used);
+	if (offset_to_first < 0) {
+		return;
+	}
+	uz begin = offset_to_first + _PRE;
+
+	while (begin < frame->used) { // Find and iterate by NALUs
+		const u8 *const data = frame->data + begin;
+		const sz offset_to_next = _find_annexb(data, frame->used - begin);
+
+		if (offset_to_next >= 0) { // Process NALUs between prefixes
+			uz size = offset_to_next;
+			if (size > 1) { // Skip too short NALUs
+				if (data[size - 1] == 0) { // Check for extra trailing zero
+					--size;
+				}
+				if (size > 1) {
+					_rtpv_process_nalu(rtpv, data, size, pts, false);
+				}
+			}
+			begin += offset_to_next + _PRE;
+
+		} else { // Process the tail
+			const uz size = frame->used - begin;
+			if (size > 1) {
+				_rtpv_process_nalu(rtpv, data, size, pts, true);
+			}
 			break;
 		}
-		offset += next_start;
-
-		if (last_offset >= 0) {
-			const u8 *const data = frame->data + last_offset + _PRE;
-			uz size = offset - last_offset - _PRE;
-			if (data[size - 1] == 0) { // Check for extra 00
-				--size;
-			}
-			_rtpv_process_nalu(rtpv, data, size, pts, false);
-		}
-
-		last_offset = offset;
-	}
-
-	if (last_offset >= 0) {
-		const u8 *const data = frame->data + last_offset + _PRE;
-		uz size = frame->used - last_offset - _PRE;
-		_rtpv_process_nalu(rtpv, data, size, pts, true);
 	}
 }
 
 void _rtpv_process_nalu(us_rtpv_s *rtpv, const u8 *data, uz size, u32 pts, bool marked) {
+	US_A(size > 1);
+
 	const uint ref_idc = (data[0] >> 5) & 3;
 	const uint type = data[0] & 0x1F;
 	us_rtp_s *rtp = rtpv->rtp;
