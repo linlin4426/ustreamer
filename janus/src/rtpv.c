@@ -101,20 +101,17 @@ void us_rtpv_wrap(us_rtpv_s *rtpv, const us_frame_s *frame, bool zero_playout_de
 void _rtpv_process_nalu(us_rtpv_s *rtpv, const u8 *data, uz size, u32 pts, bool marked) {
 	const uint ref_idc = (data[0] >> 5) & 3;
 	const uint type = data[0] & 0x1F;
-	u8 *dg = rtpv->rtp->datagram;
+	us_rtp_s *rtp = rtpv->rtp;
+	u8 *dg = rtp->datagram;
 
 	if (size + US_RTP_HEADER_SIZE <= US_RTP_TOTAL_SIZE) {
-		us_rtp_write_header(rtpv->rtp, pts, marked);
+		us_rtp_write_header(rtp, pts, marked);
 		memcpy(dg + US_RTP_HEADER_SIZE, data, size);
-		rtpv->rtp->used = size + US_RTP_HEADER_SIZE;
-		if (type == 7 || type == 8) { // SPS || PPS
-			rtpv->rtp->first_of_frame = false;
-			rtpv->rtp->last_of_frame = false;
-		} else {
-			rtpv->rtp->first_of_frame = true;
-			rtpv->rtp->last_of_frame = true;
-		}
-		rtpv->callback(rtpv->rtp);
+		rtp->used = size + US_RTP_HEADER_SIZE;
+		const bool sps_or_pps = (type == 7 || type == 8);
+		rtp->first_of_frame = !sps_or_pps;
+		rtp->last_of_frame = !sps_or_pps;
+		rtpv->callback(rtp);
 		return;
 	}
 
@@ -131,7 +128,7 @@ void _rtpv_process_nalu(us_rtpv_s *rtpv, const u8 *data, uz size, u32 pts, bool 
 			frag_size = remaining;
 		}
 
-		us_rtp_write_header(rtpv->rtp, pts, (marked && last));
+		us_rtp_write_header(rtp, pts, (marked && last));
 
 		dg[US_RTP_HEADER_SIZE] = 28 | (ref_idc << 5);
 
@@ -145,10 +142,10 @@ void _rtpv_process_nalu(us_rtpv_s *rtpv, const u8 *data, uz size, u32 pts, bool 
 		dg[US_RTP_HEADER_SIZE + 1] = fu;
 
 		memcpy(dg + fu_overhead, src, frag_size);
-		rtpv->rtp->used = fu_overhead + frag_size;
-		rtpv->rtp->first_of_frame = first;
-		rtpv->rtp->last_of_frame = last;
-		rtpv->callback(rtpv->rtp);
+		rtp->used = fu_overhead + frag_size;
+		rtp->first_of_frame = first;
+		rtp->last_of_frame = last;
+		rtpv->callback(rtp);
 
 		src += frag_size;
 		remaining -= frag_size;
