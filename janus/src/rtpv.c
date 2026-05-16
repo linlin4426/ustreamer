@@ -86,13 +86,11 @@ void us_rtpv_wrap(us_rtpv_s *rtpv, const us_frame_s *frame, bool zero_playout_de
 
 		if (offset_to_next >= 0) { // Process NALUs between prefixes
 			uz size = offset_to_next;
+			if (size > 1 && data[size - 1] == 0) { // Check for extra trailing zero
+				--size;
+			}
 			if (size > 1) { // Skip too short NALUs
-				if (data[size - 1] == 0) { // Check for extra trailing zero
-					--size;
-				}
-				if (size > 1) {
-					_rtpv_process_nalu(rtpv, data, size, pts, false);
-				}
+				_rtpv_process_nalu(rtpv, data, size, pts, false);
 			}
 			begin += offset_to_next + _PRE;
 
